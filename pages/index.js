@@ -1,16 +1,14 @@
-import Head from 'next/head'
 import imageUrlBuilder from '@sanity/image-url'
 import BlockContent from '@sanity/block-content-to-react'
 import Toolbar from '../components/Toolbar'
 import styles from '../styles/Home.module.css'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-export default function Home({ posts }) {
+export default function Home({ posts, author, category }) {
 
   const [mappedPosts, setMappedPosts] = useState([])
   const router = useRouter()
   console.log(mappedPosts)
-  console.log(posts)
   useEffect(() => {
     if (posts.length) {
       const imgBuilder = imageUrlBuilder({
@@ -30,7 +28,6 @@ export default function Home({ posts }) {
       setMappedPosts([])
     }
   }, [posts])
-
   return (
     <div>
       <Toolbar />
@@ -41,10 +38,19 @@ export default function Home({ posts }) {
       <div className={styles.feed}>
         {mappedPosts.length ?
           mappedPosts.map((p, index) => (
-            <div onClick={() => router.push(`/post/${p.slug.current}`)} key={index} className={styles.post}>
-              <h3>{p.title}</h3>
+            <article onClick={() => router.push(`/post/${p.slug.current}`)} key={index} className={styles.post}>
               <img className={styles.mainImage} src={p.mainImage} alt="" />
-            </div>
+              <aside>
+                <h3>{p.title}</h3>
+                <div className={styles.aside}>
+                  {p.publishedAt &&
+                    <span className="asideDate">{p.publishedAt.substr(0, 10)}</span>
+                  }
+                  <span className="asideAuthor">{author.name}</span>
+                  <span className="asideCategory">{category.title}</span>
+                </div>
+              </aside>
+            </article>
           )) :
           <> No Posts Yet</>}
       </div>
@@ -55,7 +61,16 @@ export default function Home({ posts }) {
 export const getServerSideProps = async pageContext => {
   const query = encodeURIComponent(`*[_type=="post"]`)
   const url = `https://as3fopdi.api.sanity.io/v1/data/query/production?query=${query};`
+  const authorURL = `https://as3fopdi.api.sanity.io/v1/data/query/production?query=*%5B_type%20%3D%3D%20%22author%22%5D`
+  const categoryURL = `https://as3fopdi.api.sanity.io/v1/data/query/production?query=*%5B_type%20%3D%3D%20%22category%22%5D`
   const result = await fetch(url).then(res => res.json());
+
+  const autResult = await fetch(authorURL).then(res => res.json());
+  const autPost = autResult.result[1]
+
+  const categoryResult = await fetch(categoryURL).then(res => res.json());
+  const categoryPost = categoryResult.result[0]
+
   if (!result.result || !result.result.length) {
     return {
       props: {
@@ -65,7 +80,9 @@ export const getServerSideProps = async pageContext => {
   } else {
     return {
       props: {
-        posts: result.result
+        posts: result.result,
+        author: autPost,
+        category: categoryPost
       }
     }
   }
