@@ -1,65 +1,72 @@
 import Head from 'next/head'
+import imageUrlBuilder from '@sanity/image-url'
+import BlockContent from '@sanity/block-content-to-react'
+import Toolbar from '../components/Toolbar'
 import styles from '../styles/Home.module.css'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
+export default function Home({ posts }) {
 
-export default function Home() {
+  const [mappedPosts, setMappedPosts] = useState([])
+  const router = useRouter()
+  console.log(mappedPosts)
+  console.log(posts)
+  useEffect(() => {
+    if (posts.length) {
+      const imgBuilder = imageUrlBuilder({
+        projectId: 'as3fopdi',
+        dataset: 'production'
+      });
+      setMappedPosts(
+        posts.map(p => {
+          return {
+            ...p,
+            mainImage: imgBuilder.image(p.mainImage).width(500).height(250)
+          }
+        })
+      )
+    }
+    else {
+      setMappedPosts([])
+    }
+  }, [posts])
+
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
+    <div>
+      <Toolbar />
+      <div className={styles.main}>
+        <h1>Welcome To My Blog</h1>
+        <h3>Recent Post:</h3>
+      </div>
+      <div className={styles.feed}>
+        {mappedPosts.length ?
+          mappedPosts.map((p, index) => (
+            <div onClick={() => router.push(`/post/${p.slug.current}`)} key={index} className={styles.post}>
+              <h3>{p.title}</h3>
+              <img className={styles.mainImage} src={p.mainImage} alt="" />
+            </div>
+          )) :
+          <> No Posts Yet</>}
+      </div>
     </div>
   )
+}
+
+export const getServerSideProps = async pageContext => {
+  const query = encodeURIComponent(`*[_type=="post"]`)
+  const url = `https://as3fopdi.api.sanity.io/v1/data/query/production?query=${query};`
+  const result = await fetch(url).then(res => res.json());
+  if (!result.result || !result.result.length) {
+    return {
+      props: {
+        posts: []
+      }
+    }
+  } else {
+    return {
+      props: {
+        posts: result.result
+      }
+    }
+  }
 }
